@@ -1,5 +1,7 @@
 #include "raylib.h"
 #include <string>
+#include <unordered_map>
+#include <cstdint> 
 #include <vector>
 
 using namespace std;
@@ -8,14 +10,28 @@ using f = float;
 using ll = long long;
 
 const int fps = 60;
-const int frame = 100;
+const int frame = 30;
 const int width = 1600;
 const int height = 1000;
 
-f time_koof = 0.00001;
-f k = 1000;
+f time_koof = 0.01;
+ll tick = 1;
+f k = 1;
 
-int circles_count = 50;
+ll circles_count = 100;
+ll obj_count = circles_count;
+ll moved_obj_count = circles_count;
+ll max_interactions = (obj_count * obj_count + obj_count)/2; // 1**2 + 2**2 + 3**2 + ... + k**2 = (k**2+k)/2 
+
+f cell_size = 20;
+
+vector<f> pos_x(circles_count);
+vector<f> pos_y(circles_count);
+vector<f> vel_x(circles_count);
+vector<f> vel_y(circles_count);
+vector<f> accleration_x(circles_count);
+vector<f> accleration_y(circles_count);
+vector<f> radius(circles_count, 15);
 
 f dist_sq(f x1, f y1, f x2, f y2) {
     f dx = x1 - x2;
@@ -40,19 +56,56 @@ Vector2 f1(f x1, f y1, f x2, f y2, f r1, f r2) {
     return { (dx / dist) * overlap, (dy / dist) * overlap };
 }
 
+void interpr_Phase_1(f dt) {
+    for (int i = 0; i < circles_count; i++) {
+        vel_x[i] += 1 * accleration_x[i] * dt;
+        vel_y[i] += 1 * accleration_y[i] * dt;
+    }
+}
+
+void interpr_Phase_2(f dt) {
+    for (int i = 0; i < circles_count; i++) {
+        pos_x[i] += vel_x[i] * dt;
+        pos_y[i] += vel_y[i] * dt;
+    }
+}
+
+void interpr_Phase_3(f dt) {
+    for (int i = 0; i < circles_count; i++) {
+        accleration_x[i] = k * (abs(pos_x[i] - radius[i]) - abs(pos_x[i] - width + radius[i]) + width - 2 * (pos_x[i] - radius[i]) - 2 * radius[i]) / 2;
+        accleration_y[i] = k * (abs(pos_y[i] - radius[i]) - abs(pos_y[i] - height + radius[i]) + height - 2 * (pos_y[i] - radius[i]) - 2 * radius[i]) / 2;
+    }
+
+    for (int i = 0; i < circles_count; i++) {
+        for (int j = i + 1; j < circles_count; j++) {
+            Vector2 force = f1(pos_x[i], pos_y[i], pos_x[j], pos_y[j], radius[i], radius[j]);
+            accleration_x[i] += k * force.x;
+            accleration_y[i] += k * force.y;
+            accleration_x[j] += -k * force.x;
+            accleration_y[j] += -k * force.y;
+        }
+    }
+}
+
+
+// Verlet
+inline void interpreter(f dt = time_koof) {
+    //interpr_Phase_1(dt);
+    interpr_Phase_2(dt);
+    interpr_Phase_3(dt);
+    interpr_Phase_1(dt);
+    tick++;
+}
+
+
+
 
 vector<float> energy_history;
 const size_t MAX_POINTS = 800;
 
-int tick = 1;
 
 int main() {
-    vector<f> pos_x(circles_count);
-    vector<f> pos_y(circles_count);
-    vector<f> vel_x(circles_count);
-    vector<f> vel_y(circles_count);
-    vector<f> radius(circles_count, 15);
-
+    interpr_Phase_1(time_koof / 2);
 
     for (int i = 0; i < circles_count; i++) {
         pos_x[i] = rand() % (width - 20) + 10;
@@ -91,6 +144,21 @@ int main() {
         if (IsKeyDown(KEY_RIGHT)) circlePos.x += 4.0f;
         if (IsKeyDown(KEY_LEFT))  circlePos.x -= 4.0f;
         */
+
+        unordered_map<int64_t, vector<int>> grid;
+
+        for (int i = 0; i < circles_count; i++) {
+            int cx = (int)(pos_x[i] / cell_size);
+            int cy = (int)(pos_y[i] / cell_size);
+            int64_t key = ((int64_t)cx << 32) | (uint32_t)cy;  // упаковать 2 int в один ключ
+            grid[key].push_back(i);
+        }
+
+        for (int h = 0; h < frame; h++) {
+            interpreter();
+        }
+
+
         // Получаем точное значение FPS для кастомной отрисовки
         int currentFPS = GetFPS();
 
@@ -105,29 +173,14 @@ int main() {
 
         // Рисуем объект
         //DrawCircleV(circlePos, 40, MAROON);
-        for (int h = 0; h < frame; h++) {
-            for (int i = 0; i < circles_count; i++) {
-                vel_x[i] += k * (abs(pos_x[i] - radius[i]) - abs(pos_x[i] - width + radius[i]) + width - 2 * (pos_x[i] - radius[i]) - 2 * radius[i]) / 2;
-                vel_y[i] += k * (abs(pos_y[i] - radius[i]) - abs(pos_y[i] - height + radius[i]) + height - 2 * (pos_y[i] - radius[i]) - 2 * radius[i]) / 2;
-
-                //vel_x[i] += -k * pos_x[i] + (k * abs(pos_x[i])) / 2 - (k * abs(pos_x[i] - width)) / 2 + k * (width) / 2;
-                //vel_y[i] += -k * pos_y[i] + (k * abs(pos_y[i])) / 2 - (k * abs(pos_y[i] - height)) / 2 + k * (height) / 2;
-                for (int j = 0; j < circles_count; j++) {
-                    if (i == j) continue;
-                    Vector2 force = f1(pos_x[i], pos_y[i], pos_x[j], pos_y[j], radius[i], radius[j]);
-                    vel_x[i] += k * force.x * time_koof;
-                    vel_y[i] += k * force.y * time_koof;
-                }
-                pos_x[i] += vel_x[i] * time_koof;
-                pos_y[i] += vel_y[i] * time_koof;
-                tick++;
-            }
-        }
+        
 
         for (int i = 0; i < circles_count; i++) {
-            DrawCircleV({ pos_x[i], pos_y[i] }, radius[i], BLACK);
+            DrawCircle(pos_x[i], height-pos_y[i], radius[i], BLACK);
         }
+
         //RenderGraphContent(500, 500);
+
         EndDrawing();
     }
 

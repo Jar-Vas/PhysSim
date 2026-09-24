@@ -1,16 +1,19 @@
 #include "raylib.h"
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 #include <cstdint> 
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
 using f = float;
 using ll = long long;
+using json = nlohmann::json;
 
 const int fps = 60;
-const int frame = 10;
+int frame = 12;
 const int width = 1600;
 const int height = 1000;
 
@@ -21,12 +24,20 @@ struct Cell {
 
 f time_koof = 0.01;
 ll tick = 1;
+ll end_tick = 10000;
 f k = 10;
+
+f Energy;
 
 ll circles_count = 1601;
 ll obj_count = circles_count;
 ll moved_obj_count = circles_count;
 ll max_interactions = (obj_count * obj_count + obj_count)/2; // 1**2 + 2**2 + 3**2 + ... + k**2 = (k**2+k)/2 
+
+json Recording;
+int frame_recorded_koof = 10;
+string recorded_file_name = "Recording2";
+
 
 f cell_size = 48;
 unordered_map<int64_t, Cell> grid;
@@ -65,8 +76,7 @@ Vector2 f1(f x1, f y1, f x2, f y2, f r1, f r2) {
 }*/
 
 /**/
-// но для начала возьмём общие константы
-const f EPSILON = 60.0;  // глубина потенциальной ямы
+const f EPSILON = 15.0;  // глубина потенциальной ямы
 const f SIGMA = 16.0;  // характерный размер частицы
 const f CUTOFF_RADIUS = 3.0 * SIGMA;
 
@@ -166,6 +176,14 @@ void interpr_Phase_3(f dt) {
 // Verlet
 inline void interpreter(f dt = time_koof) {
     //interpr_Phase_1(dt);
+    if (tick % frame_recorded_koof == 1) {
+        string frame_name = "Frame" + to_string(tick);
+        Recording[frame_name]["Energy"] = Energy;
+        Recording[frame_name]["Objects"]["x"] = pos_x;
+        Recording[frame_name]["Objects"]["y"] = pos_y;
+        Recording[frame_name]["Objects"]["radius"] = radius;
+    }
+
     interpr_Phase_2(dt);
     interpr_Phase_3(dt);
     interpr_Phase_1(dt);
@@ -175,10 +193,10 @@ inline void interpreter(f dt = time_koof) {
     if (tick == 2000) {
         pos_x[1600] = 900;
         pos_y[1600] = 900;
-        vel_y[1600] = -50;
-        vel_x[1600] = -50;
+        vel_y[1600] = -20;
+        vel_x[1600] = -20;
         radius[1600] = 10;
-        mass[1600] = 200;
+        mass[1600] = 100;
     }
     tick++;
 }
@@ -216,25 +234,31 @@ int main() {
         }
         Energy /= 2;
         string EnergyText = "Energy: " + to_string(Energy);
-        DrawText(EnergyText.c_str(), 10, 40, 20, DARKGRAY);
+        DrawText(EnergyText.c_str(), 10, 70, 20, DARKGRAY);
 
 
         string TickText = "Tick: " + to_string(tick);
-        DrawText(TickText.c_str(), 10, 70, 20, DARKGRAY);
+        DrawText(TickText.c_str(), 10, 100, 20, DARKGRAY);
 
         /*Hello world
-        // Логика
         if (IsKeyDown(KEY_RIGHT)) circlePos.x += 4.0f;
         if (IsKeyDown(KEY_LEFT))  circlePos.x -= 4.0f;
         */
-
+        if (IsKeyPressed(KEY_ONE)) frame++;
+        if (IsKeyPressed(KEY_TWO)) frame -= 1*frame>1;
+        if (IsKeyPressed(KEY_THREE)) frame = 1;
         
 
 
         for (int h = 0; h < frame; h++) {
+            if (tick > end_tick) {
+                break;
+            }
             interpreter();
         }
-
+        if (tick > end_tick) {
+            break;
+        }
 
         // Получаем точное значение FPS для кастомной отрисовки
         int currentFPS = GetFPS();
@@ -245,8 +269,12 @@ int main() {
         //DrawFPS(10, 10);
 
         // 2. Кастомный счетчик (с вашим стилем и цветом)
-        std::string fpsText = "FPS: " + std::to_string(currentFPS);
+        string fpsText = "FPS: " + to_string(currentFPS);
         DrawText(fpsText.c_str(), 10, 10, 20, DARKGRAY);
+
+
+        string render_per_fps = "Render per fps: " + to_string(frame);
+        DrawText(render_per_fps.c_str(), 10, 40, 20, DARKGRAY);
 
         // Рисуем объект
         //DrawCircleV(circlePos, 40, MAROON);
@@ -262,4 +290,8 @@ int main() {
     }
 
     CloseWindow();
+
+    ofstream file(recorded_file_name);
+    file << Recording.dump(4);
+    file.close();
 }

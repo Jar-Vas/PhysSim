@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="PhysSim/PhysSim.vcxproj" Id="a5b05574-2da9-417b-accc-773726e3e36b" />
+</Solution>

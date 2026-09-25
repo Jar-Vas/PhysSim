@@ -139,10 +139,17 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="OUT.cpp" />
+    <ClCompile Include="Out_Recording.cpp" />
     <ClCompile Include="PhysSim.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Connector.h" />
+    <ClInclude Include="OUT.h" />
+    <ClInclude Include="Out_Recording.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

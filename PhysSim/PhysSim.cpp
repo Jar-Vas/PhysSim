@@ -1,16 +1,5 @@
-#include "raylib.h"
-#include <nlohmann/json.hpp>
-#include <string>
-#include <unordered_map>
-#include <cstdint> 
-#include <vector>
-#include <fstream>
-
+#include "Connector.h"
 using namespace std;
-
-using f = float;
-using ll = long long;
-using json = nlohmann::json;
 
 const int fps = 60;
 int frame = 12;
@@ -22,9 +11,9 @@ struct Cell {
     ll last_tick = -1;
 };
 
-f time_koof = 0.01;
+f time_koof = 0.005;
 ll tick = 1;
-ll end_tick = 10000;
+ll end_tick = -1;
 f k = 10;
 
 f Energy;
@@ -34,6 +23,7 @@ ll obj_count = circles_count;
 ll moved_obj_count = circles_count;
 ll max_interactions = (obj_count * obj_count + obj_count)/2; // 1**2 + 2**2 + 3**2 + ... + k**2 = (k**2+k)/2 
 
+bool is_recording = false;
 json Recording;
 int frame_recorded_koof = 10;
 string recorded_file_name = "Recording2";
@@ -76,7 +66,7 @@ Vector2 f1(f x1, f y1, f x2, f y2, f r1, f r2) {
 }*/
 
 /**/
-const f EPSILON = 15.0;  // глубина потенциальной ямы
+const f EPSILON = 30.0;  // глубина потенциальной ямы
 const f SIGMA = 16.0;  // характерный размер частицы
 const f CUTOFF_RADIUS = 3.0 * SIGMA;
 
@@ -146,7 +136,7 @@ void interpr_Phase_3(f dt) {
     for (int i = 0; i < circles_count; i++) {
         accleration_x[i] = 5 * k * (abs(pos_x[i] - radius[i]) - abs(pos_x[i] - width + radius[i]) + width - 2 * (pos_x[i] - radius[i]) - 2 * radius[i]) / 2;
         accleration_y[i] = 5 * k * (abs(pos_y[i] - radius[i]) - abs(pos_y[i] - height + radius[i]) + height - 2 * (pos_y[i] - radius[i]) - 2 * radius[i]) / 2;
-        accleration_y[i] += -9.81 * time_koof * 0;
+        accleration_y[i] += -9.81 * time_koof * 25;
     }
 
     for (int i = 0; i < circles_count; i++) {
@@ -176,7 +166,7 @@ void interpr_Phase_3(f dt) {
 // Verlet
 inline void interpreter(f dt = time_koof) {
     //interpr_Phase_1(dt);
-    if (tick % frame_recorded_koof == 1) {
+    if (tick % frame_recorded_koof == 1 && is_recording) {
         string frame_name = "Frame" + to_string(tick);
         Recording[frame_name]["Energy"] = Energy;
         Recording[frame_name]["Objects"]["x"] = pos_x;
@@ -193,8 +183,8 @@ inline void interpreter(f dt = time_koof) {
     if (tick == 2000) {
         pos_x[1600] = 900;
         pos_y[1600] = 900;
-        vel_y[1600] = -20;
-        vel_x[1600] = -20;
+        vel_y[1600] = -100;
+        vel_x[1600] = -100;
         radius[1600] = 10;
         mass[1600] = 100;
     }
@@ -251,12 +241,12 @@ int main() {
 
 
         for (int h = 0; h < frame; h++) {
-            if (tick > end_tick) {
+            if (tick > end_tick && end_tick != -1) {
                 break;
             }
             interpreter();
         }
-        if (tick > end_tick) {
+        if (tick > end_tick && end_tick != -1) {
             break;
         }
 
@@ -290,8 +280,15 @@ int main() {
     }
 
     CloseWindow();
+    if (is_recording) {
+        ofstream file(recorded_file_name);
+        file << Recording.dump(4);
+        file.close();
+    }
 
-    ofstream file(recorded_file_name);
-    file << Recording.dump(4);
-    file.close();
+    
+    Out_Recording video{ "Recording2", 60, width, height, frame, circles_count };
+    video.Out();
+
+
 }

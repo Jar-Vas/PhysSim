@@ -9,13 +9,13 @@ const int height = 1000;
 f dt = 0.005;
 ll tick = 1;
 ll end_tick = -1;
-f k = 10;
+f k = 1;
 
 f Energy;
 
 f MAX_FORCE = 1000;
 
-ll circles_count = 750*1;
+ll circles_count = 750*3;
 
 bool is_recording = false;
 json Recording;
@@ -44,7 +44,7 @@ vector<Vector3> px;
 
 vector<ll> del_id;
 
-f dist_sq(f x1, f y1, f x2, f y2) {
+inline f dist_sq(f x1, f y1, f x2, f y2) {
     f dx = x1 - x2;
     f dy = y1 - y2;
     return dx * dx + dy * dy;
@@ -178,9 +178,9 @@ void interpr_Phase_3(f dt) {
     }
 
     for (int i = 0; i < circles_count; i++) {
-        accleration_x[i] = 5 * k * (abs(pos_x[i] - radius[i]) - abs(pos_x[i] - width + radius[i]) + width - 2 * (pos_x[i] - radius[i]) - 2 * radius[i]) / 2;
-        accleration_y[i] = 5 * k * (abs(pos_y[i] - radius[i]) - abs(pos_y[i] - height + radius[i]) + height - 2 * (pos_y[i] - radius[i]) - 2 * radius[i]) / 2;
-        accleration_y[i] += -9.81 * 0.1 * (!IsKeyDown(KEY_G) * 2 - 1);
+        accleration_x[i] = 0 * 5 * k * (abs(pos_x[i] - radius[i]) - abs(pos_x[i] - width + radius[i]) + width - 2 * (pos_x[i] - radius[i]) - 2 * radius[i]) / 2;
+        accleration_y[i] = 0 * 5 * k * (abs(pos_y[i] - radius[i]) - abs(pos_y[i] - height + radius[i]) + height - 2 * (pos_y[i] - radius[i]) - 2 * radius[i]) / 2;
+        accleration_y[i] += -9.81 * 0 * (!IsKeyDown(KEY_G) * 2 - 1);
     }
 
     for (int i = 0; i < circles_count; i++) {
@@ -257,15 +257,23 @@ int main() {
         pos_y[i] = rand() % (height - 20) + 10;
         vel_y[i] = 1;
         vel_x[i] = 1;
-    }*/
+    }
 
     for (int i = 0; i < circles_count; i++) {
-        pos_x[i] = 17.5 * (i % 50) + 20 + (rand() % 100) / 10000;
-        pos_y[i] = 17.5 * (i / 50) + 20 + (rand() % 100) / 10000;
+        pos_x[i] = 17.5 * (i % 50) + 300 + (rand() % 100) / 10000;
+        pos_y[i] = 17.5 * (i / 50) + 300 + (rand() % 100) / 10000;
+        vel_y[i] = 0;
+        vel_x[i] = 0;
+    }*/
+    
+    f lr = 17.5;
+    for (int i = 0; i < circles_count; i++) {
+        pos_x[i] = lr * (i % 50) + lr / 2 * ((int)((i) / (50)) % 2) + 300;
+        pos_y[i] = sqrt(3) * lr / 2 * (i / 50) + 300;
         vel_y[i] = 0;
         vel_x[i] = 0;
     }
-    
+
 
     InitWindow(width, height, "Test");
     SetTargetFPS(fps); // Ограничиваем FPS (можно изменить или убрать для теста)
@@ -297,8 +305,9 @@ int main() {
         }
         ClearBackground(RAYWHITE);
 
+
         for (int i = 0; i < circles_count; i++) {
-            DrawCircle(pos_x[i], height - pos_y[i], radius[i], BLACK);
+            DrawCircle(pos_x[i], height - pos_y[i], radius[i], {0, (unsigned char)(int)min(255.0f, 3 * sqrt(vel_x[i] * vel_x[i] + vel_y[i] * vel_y[i])), 0, 255});
         }
 
         for (Vector3 i : px) {
@@ -336,6 +345,20 @@ int main() {
                 vel_y[i] = 0;
             }
         }
+
+        if (IsKeyPressed(KEY_N)) {
+            for (int i = 0; i < circles_count; i++) {
+                vel_x[i] *= 1.1;
+                vel_y[i] *= 1.1;
+            }
+        }
+        if (IsKeyPressed(KEY_M)) {
+            for (int i = 0; i < circles_count; i++) {
+                vel_x[i] *= 0.9;
+                vel_y[i] *= 0.9;
+            }
+        }
+
         f scale = 0.1;
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             mouse_x_temp_1 = GetMouseX();
